@@ -1,0 +1,179 @@
+Metadata-Version: 2.4
+Name: easykey
+Version: 0.1.0
+Summary: Python wrapper for the easykey CLI - secure keychain access
+Home-page: https://github.com/kingofmac/easykey
+Author: KingOfMac
+Author-email: 
+Project-URL: Bug Reports, https://github.com/kingofmac/easykey/issues
+Project-URL: Source, https://github.com/kingofmac/easykey
+Keywords: keychain,security,secrets,macOS,CLI,wrapper
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: MacOS
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Security
+Classifier: Topic :: Security :: Cryptography
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+Provides-Extra: dev
+Requires-Dist: pytest>=6.0; extra == "dev"
+Requires-Dist: pytest-cov; extra == "dev"
+Requires-Dist: black; extra == "dev"
+Requires-Dist: flake8; extra == "dev"
+Requires-Dist: mypy; extra == "dev"
+Dynamic: author
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: project-url
+Dynamic: provides-extra
+Dynamic: requires-python
+Dynamic: summary
+
+# EasyKey Python Package
+
+A simple Python wrapper for the [easykey](https://github.com/kingofmac/easykey) CLI that provides secure keychain access on macOS.
+
+## Installation
+
+### Prerequisites
+
+1. First, ensure you have the `easykey` CLI installed and available in your PATH
+2. Install this Python package:
+
+```bash
+pip install easykey
+```
+
+### Local Development Installation
+
+If you're working with the source code:
+
+```bash
+cd python
+pip install -e .
+```
+
+## Usage
+
+### Basic Secret Retrieval
+
+```python
+import easykey
+
+# Get a secret (this will trigger biometric authentication)
+secret = easykey.secret("MySecretName")
+print(secret)
+
+# Get a secret with a reason for audit logging
+secret = easykey.secret("MySecretName", "Connecting to production database")
+```
+
+### Managing Secrets
+
+```python
+import easykey
+
+# Store a secret
+easykey.set_secret("MySecretName", "my-secret-value")
+
+# Store a secret with a reason
+easykey.set_secret("MySecretName", "my-secret-value", "Initial setup")
+
+# Remove a secret
+easykey.remove_secret("MySecretName")
+
+# Remove a secret with a reason
+easykey.remove_secret("MySecretName", "No longer needed")
+```
+
+### Listing and Status
+
+```python
+import easykey
+
+# List all secret names
+secrets = easykey.list_secrets()
+for secret in secrets:
+    print(f"Secret: {secret['name']}")
+
+# List secrets with creation timestamps
+secrets = easykey.list_secrets(include_timestamps=True)
+for secret in secrets:
+    print(f"Secret: {secret['name']}, Created: {secret.get('createdAt', 'Unknown')}")
+
+# Get vault status
+status = easykey.status()
+print(f"Total secrets: {status['secrets']}")
+print(f"Last access: {status['last_access']}")
+```
+
+### Cleanup (Nuclear Option)
+
+```python
+import easykey
+
+# Remove ALL secrets from the vault
+# This is destructive and cannot be undone!
+deleted_count = easykey.cleanup_vault(confirm=True)
+print(f"Removed {deleted_count} secrets")
+```
+
+## API Reference
+
+### Functions
+
+- **`secret(name, reason=None)`** - Retrieve a secret value
+- **`get_secret(name, reason=None)`** - Alias for `secret()`
+- **`set_secret(name, value, reason=None)`** - Store a secret
+- **`remove_secret(name, reason=None)`** - Remove a secret
+- **`list_secrets(include_timestamps=False)`** - List all secrets
+- **`status()`** - Get vault status information
+- **`cleanup_vault(confirm=False)`** - Remove all secrets (destructive)
+
+### Parameters
+
+- **`name`** (str): The name/identifier of the secret
+- **`value`** (str): The secret value to store
+- **`reason`** (str, optional): Reason for the operation (for audit logging)
+- **`include_timestamps`** (bool): Whether to include creation timestamps in list results
+- **`confirm`** (bool): Must be `True` to perform destructive cleanup operation
+
+### Return Values
+
+- **`secret()`** returns the secret value as a string
+- **`list_secrets()`** returns a list of dictionaries with secret information
+- **`status()`** returns a dictionary with vault status
+- **`cleanup_vault()`** returns the number of secrets removed
+
+### Exceptions
+
+All functions may raise **`EasyKeyError`** if the underlying CLI operation fails.
+
+## Security Notes
+
+- This package is a thin wrapper around the easykey CLI
+- All security features (biometric authentication, keychain integration) are handled by the CLI
+- Secrets are retrieved through subprocess calls and are not cached in Python
+- The package automatically locates the easykey binary in common installation paths
+
+## Requirements
+
+- macOS (required by the underlying easykey CLI)
+- Python 3.7+
+- easykey CLI installed and accessible
+
+## License
+
+MIT License - see the main easykey project for details.

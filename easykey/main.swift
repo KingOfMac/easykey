@@ -2,7 +2,7 @@
 //  main.swift
 //  easykey
 //
-//  Created by Meir Itkin on 27/8/2025.
+//  Created by kingofmac
 //
 
 import Foundation
@@ -219,6 +219,48 @@ struct KeychainManager {
             query[kSecUseAuthenticationContext as String] = context
         }
         let status = SecItemDelete(query as CFDictionary)
+        
+        // Handle access control mismatch by trying multiple fallback approaches
+        if status == errSecInvalidOwnerEdit || status == errSecMissingEntitlement {
+            if verbose { eprint("[debug] Access control mismatch, trying fallback methods") }
+            
+            // Try 1: Without authentication context
+            var basicQuery: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: serviceName,
+                kSecAttrAccount as String: name
+            ]
+            var retryStatus = SecItemDelete(basicQuery as CFDictionary)
+            
+            if retryStatus == errSecSuccess || retryStatus == errSecItemNotFound {
+                if verbose { eprint("[debug] Fallback method 1 succeeded") }
+                try updateLastAccess(context: nil)
+                return
+            }
+            
+            // Try 2: Query first, then delete by reference
+            if verbose { eprint("[debug] Fallback method 1 failed (\(retryStatus)), trying method 2") }
+            basicQuery[kSecReturnRef as String] = true
+            basicQuery[kSecMatchLimit as String] = kSecMatchLimitOne
+            
+            var item: CFTypeRef?
+            let queryStatus = SecItemCopyMatching(basicQuery as CFDictionary, &item)
+            
+            if queryStatus == errSecSuccess, let itemRef = item {
+                let deleteQuery: [String: Any] = [kSecValueRef as String: itemRef]
+                retryStatus = SecItemDelete(deleteQuery as CFDictionary)
+                
+                if retryStatus == errSecSuccess {
+                    if verbose { eprint("[debug] Fallback method 2 succeeded") }
+                    try updateLastAccess(context: nil)
+                    return
+                }
+            }
+            
+            if verbose { eprint("[debug] All fallback methods failed") }
+            throw CLIError.keychain("Delete failed - secret may have incompatible access controls from different EasyKey version (\(status))")
+        }
+        
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw CLIError.keychain("Delete failed (\(status))")
         }
@@ -329,6 +371,61 @@ struct KeychainManager {
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter.date(from: text)
     }
+
+    func cleanupAllSecrets(reason: String) throws -> Int {
+        if verbose { eprint("[debug] Starting cleanup - this will remove ALL easykey secrets") }
+        
+        // Try to authenticate first, but continue even if it fails
+        let context = try? authenticate(reason: reason)
+        
+        var deletedCount = 0
+        
+        // Method 1: Try to list and delete each secret individually
+        do {
+            let secrets = try listSecrets(reason: reason)
+            for (name, _) in secrets {
+                if verbose { eprint("[debug] Attempting to delete: \(name)") }
+                do {
+                    try removeSecret(name: name, reason: reason)
+                    deletedCount += 1
+                    if verbose { eprint("[debug] Deleted: \(name)") }
+                } catch {
+                    if verbose { eprint("[debug] Failed to delete \(name): \(error)") }
+                }
+            }
+        } catch {
+            if verbose { eprint("[debug] Could not list secrets for individual deletion: \(error)") }
+        }
+        
+        // Method 2: Nuclear option - delete all items with our service name
+        if verbose { eprint("[debug] Performing nuclear cleanup of all easykey items") }
+        
+        let queries: [[String: Any]] = [
+            // Main secrets
+            [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: serviceName
+            ],
+            // Metadata
+            [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: metaServiceName
+            ]
+        ]
+        
+        for query in queries {
+            let status = SecItemDelete(query as CFDictionary)
+            if status == errSecSuccess {
+                if verbose { eprint("[debug] Nuclear cleanup succeeded for service: \(query[kSecAttrService as String] as? String ?? "unknown")") }
+            } else if status == errSecItemNotFound {
+                if verbose { eprint("[debug] No items found for service: \(query[kSecAttrService as String] as? String ?? "unknown")") }
+            } else {
+                if verbose { eprint("[debug] Nuclear cleanup failed for service: \(query[kSecAttrService as String] as? String ?? "unknown") (\(status))") }
+            }
+        }
+        
+        return deletedCount
+    }
 }
 
 // MARK: - CLI Parsing
@@ -339,6 +436,7 @@ enum Command {
     case remove(name: String)
     case list(json: Bool)
     case status
+    case cleanup
     case help
     case version
 }
@@ -373,6 +471,9 @@ private func printUsage() {
 
       status
         Show vault status: number of secrets and last access timestamp.
+
+      cleanup
+        Remove all easykey secrets from keychain (nuclear option for fixing access issues).
     """
     print(usage)
 }
@@ -435,6 +536,8 @@ private func parseCLI() throws -> (Command, CLIOptions) {
         return (.list(json: jsonFlag), options)
     case "status":
         return (.status, options)
+    case "cleanup":
+        return (.cleanup, options)
     case "--help", "help":
         return (.help, options)
     default:
@@ -501,6 +604,20 @@ do {
         print("secrets: \(state.count)")
         print("last_access: \(state.lastAccess.map { format(date: $0) } ?? "-")")
         if options.verbose { eprint("[debug] status: success") }
+    case .cleanup:
+        if options.verbose { eprint("[debug] cleanup reason=\(options.reason)") }
+        print("WARNING: This will delete ALL easykey secrets from the keychain!")
+        print("This cannot be undone. Continue? (type 'yes' to confirm)")
+        
+        let input = readLine() ?? ""
+        if input.lowercased() == "yes" {
+            let deletedCount = try kc.cleanupAllSecrets(reason: options.reason)
+            print("Cleanup complete. Removed \(deletedCount) secrets using individual deletion.")
+            print("Nuclear cleanup also performed to ensure all easykey items are removed.")
+            if options.verbose { eprint("[debug] cleanup: success") }
+        } else {
+            print("Cleanup cancelled.")
+        }
     }
 } catch let err as CLIError {
     eprint("error: \(err.description)")

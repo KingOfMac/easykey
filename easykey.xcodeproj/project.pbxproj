@@ -250,6 +250,11 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = WNDRKK4W22;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/easykey/python",
+					"$(PROJECT_DIR)/easykey/nodejs",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.meiritkin;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -264,6 +269,11 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = WNDRKK4W22;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/easykey/python",
+					"$(PROJECT_DIR)/easykey/nodejs",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.meiritkin;
 				PRODUCT_NAME = "$(TARGET_NAME)";
