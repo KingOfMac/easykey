@@ -27,21 +27,15 @@
 
 ### CLI Tool
 
-#### Option 1: Download Release
-1. Download the latest release from [GitHub Releases](https://github.com/kingofmac/easykey/releases)
-2. Move the binary to your PATH:
-```bash
-sudo mv easykey /usr/local/bin/
-sudo chmod +x /usr/local/bin/easykey
-```
-
-#### Option 2: Build from Source
+#### Build from Source
 ```bash
 git clone https://github.com/kingofmac/easykey.git
-cd easykey
+cd cli
 swift build -c release
 cp .build/release/easykey /usr/local/bin/
 ```
+
+Brew installation coming soon
 
 ### Python Package
 
