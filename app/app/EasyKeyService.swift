@@ -2,11 +2,13 @@
 //  EasyKeyService.swift
 //  app
 //
-//  Created by Meir Itkin on 31/8/2025.
+//  Created by kingofmac on 31/8/2025.
 //
 
 import Foundation
 import Combine
+import Security
+import LocalAuthentication
 
 // MARK: - Models
 
@@ -14,6 +16,12 @@ struct Secret: Identifiable, Codable {
     let id = UUID()
     let name: String
     let createdAt: String?
+    
+    // Exclude id from Codable since it's generated locally
+    private enum CodingKeys: String, CodingKey {
+        case name
+        case createdAt
+    }
     
     var displayCreatedAt: String {
         guard let createdAt = createdAt else { return "Unknown" }
@@ -48,26 +56,23 @@ struct VaultStatus: Codable {
 }
 
 enum EasyKeyError: LocalizedError, Identifiable {
-    case cliNotFound
-    case executionFailed(String)
-    case authenticationFailed
-    case secretNotFound(String)
-    case invalidInput(String)
-    
+    case keychain(String)
+    case authentication(String)
+    case notFound(String)
+    case general(String)
+
     var id: String { errorDescription ?? "unknown" }
     
     var errorDescription: String? {
         switch self {
-        case .cliNotFound:
-            return "EasyKey CLI not found. Please ensure easykey is installed and available in PATH."
-        case .executionFailed(let message):
-            return "Command failed: \(message)"
-        case .authenticationFailed:
-            return "Authentication failed. Please try again."
-        case .secretNotFound(let name):
-            return "Secret '\(name)' not found."
-        case .invalidInput(let message):
-            return "Invalid input: \(message)"
+        case .keychain(let message):
+            return "Keychain Error: \(message)"
+        case .authentication(let message):
+            return "Authentication failed: \(message)"
+        case .notFound(let message):
+            return "Not Found: \(message)"
+        case .general(let message):
+            return message
         }
     }
 }
@@ -81,91 +86,19 @@ class EasyKeyService: ObservableObject {
     @Published var isLoading = false
     @Published var error: EasyKeyError?
     
-    private let cliPath: String
+    private let keychainManager = KeychainManager(verbose: true) // Enable verbose for debugging
     
     init() {
-        // Try to find easykey CLI in common locations
-        self.cliPath = Self.findCLI() ?? "easykey"
+        // Initial load
+        Task {
+            await refresh()
+        }
     }
-    
-    private static func findCLI() -> String? {
-        let possiblePaths = [
-            "/usr/local/bin/easykey",
-            "/opt/homebrew/bin/easykey",
-            "/Users/\(NSUserName())/Documents/Code/Projects/easykey/cli/.build/release/easykey",
-            "easykey"
-        ]
-        
-        for path in possiblePaths {
-            if FileManager.default.fileExists(atPath: path) {
-                return path
-            }
-        }
-        
-        // Try which easykey
-        let task = Process()
-        task.launchPath = "/usr/bin/which"
-        task.arguments = ["easykey"]
-        
-        let pipe = Pipe()
-        task.standardOutput = pipe
-        
-        do {
-            try task.run()
-            task.waitUntilExit()
-            
-            if task.terminationStatus == 0 {
-                let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                if let path = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
-                   !path.isEmpty {
-                    return path
-                }
-            }
-        } catch {
-            // Fall through to return nil
-        }
-        
-        return nil
-    }
-    
-    private func executeCommand(_ arguments: [String]) async throws -> String {
-        return try await withCheckedThrowingContinuation { continuation in
-            let task = Process()
-            task.launchPath = cliPath
-            task.arguments = arguments
-            
-            let outputPipe = Pipe()
-            let errorPipe = Pipe()
-            task.standardOutput = outputPipe
-            task.standardError = errorPipe
-            
-            task.terminationHandler = { process in
-                let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-                let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-                
-                let output = String(data: outputData, encoding: .utf8) ?? ""
-                let errorOutput = String(data: errorData, encoding: .utf8) ?? ""
-                
-                if process.terminationStatus == 0 {
-                    continuation.resume(returning: output)
-                } else {
-                    let errorMessage = errorOutput.isEmpty ? "Command failed" : errorOutput.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if errorMessage.contains("Authentication failed") {
-                        continuation.resume(throwing: EasyKeyError.authenticationFailed)
-                    } else if errorMessage.contains("not found") {
-                        continuation.resume(throwing: EasyKeyError.secretNotFound(""))
-                    } else {
-                        continuation.resume(throwing: EasyKeyError.executionFailed(errorMessage))
-                    }
-                }
-            }
-            
-            do {
-                try task.run()
-            } catch {
-                continuation.resume(throwing: EasyKeyError.cliNotFound)
-            }
-        }
+
+    private func format(date: Date) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.string(from: date)
     }
     
     // MARK: - Public Methods
@@ -175,15 +108,10 @@ class EasyKeyService: ObservableObject {
         error = nil
         
         do {
-            let output = try await executeCommand(["list", "--json"])
-            let data = output.data(using: .utf8) ?? Data()
-            self.secrets = try JSONDecoder().decode([Secret].self, from: data)
+            let items = try keychainManager.listSecrets(reason: "Accessing secrets from EasyKey app")
+            self.secrets = items.map { Secret(name: $0.name, createdAt: $0.createdAt.map(format)) }
         } catch {
-            if let easyKeyError = error as? EasyKeyError {
-                self.error = easyKeyError
-            } else {
-                self.error = EasyKeyError.executionFailed(error.localizedDescription)
-            }
+            self.error = .keychain(error.localizedDescription)
             self.secrets = []
         }
         
@@ -192,58 +120,41 @@ class EasyKeyService: ObservableObject {
     
     func refreshStatus() async {
         do {
-            let output = try await executeCommand(["status"])
-            let lines = output.components(separatedBy: .newlines).compactMap { line in
-                line.trimmingCharacters(in: .whitespacesAndNewlines)
-            }.filter { !$0.isEmpty }
-            
-            var secrets = 0
-            var lastAccess: String?
-            
-            for line in lines {
-                if line.hasPrefix("secrets: ") {
-                    secrets = Int(String(line.dropFirst(9))) ?? 0
-                } else if line.hasPrefix("last_access: ") {
-                    lastAccess = String(line.dropFirst(13))
-                }
-            }
-            
-            self.status = VaultStatus(secrets: secrets, lastAccess: lastAccess)
+            let (count, lastAccess) = try keychainManager.status(reason: "Checking status from EasyKey app")
+            self.status = VaultStatus(secrets: count, lastAccess: lastAccess.map(format))
         } catch {
-            if let easyKeyError = error as? EasyKeyError {
-                self.error = easyKeyError
-            } else {
-                self.error = EasyKeyError.executionFailed(error.localizedDescription)
-            }
+            self.error = .keychain(error.localizedDescription)
         }
     }
     
     func getSecret(_ name: String) async throws -> String {
-        let output = try await executeCommand(["get", name, "--quiet"])
-        return output.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-    
-    func setSecret(name: String, value: String, reason: String? = nil) async throws {
-        var args = ["set", name, value]
-        if let reason = reason, !reason.isEmpty {
-            args.append(contentsOf: ["--reason", reason])
+        let data = try await keychainManager.getSecret(name: name, reason: "Reading secret '\(name)'")
+        guard let string = String(data: data, encoding: .utf8) else {
+            throw EasyKeyError.general("Failed to decode secret from data.")
         }
-        _ = try await executeCommand(args)
+        return string
     }
     
-    func removeSecret(_ name: String, reason: String? = nil) async throws {
-        var args = ["remove", name]
-        if let reason = reason, !reason.isEmpty {
-            args.append(contentsOf: ["--reason", reason])
+    func setSecret(name: String, value: String, reason: String? = nil) async {
+        do {
+            try await keychainManager.setSecret(
+                name: name,
+                value: Data(value.utf8),
+                reason: reason ?? "Saving secret '\(name)'"
+            )
+            await refresh()
+        } catch {
+            self.error = .keychain("Failed to set secret: \(error.localizedDescription)")
         }
-        _ = try await executeCommand(args)
     }
     
-    func cleanup() async throws -> String {
-        // Note: This doesn't handle the interactive confirmation
-        // We'll need to handle this differently in the UI
-        let output = try await executeCommand(["cleanup"])
-        return output
+    func removeSecret(_ name: String, reason: String? = nil) async {
+        do {
+            try await keychainManager.removeSecret(name: name, reason: reason ?? "Deleting secret '\(name)'")
+            await refresh()
+        } catch {
+            self.error = .keychain("Failed to remove secret: \(error.localizedDescription)")
+        }
     }
     
     func refresh() async {
@@ -253,5 +164,209 @@ class EasyKeyService: ObservableObject {
     
     func clearError() {
         error = nil
+    }
+}
+
+// MARK: - Keychain Manager (Integrated from CLI)
+
+private let serviceName = "easykey"
+private let metaServiceName = "easykey.meta"
+private let lastAccessAccount = "last_access"
+
+struct KeychainManager {
+    let verbose: Bool
+
+    private func makeAccessControl() throws -> SecAccessControl? {
+        var error: Unmanaged<CFError>?
+        guard let access = SecAccessControlCreateWithFlags(
+            nil,
+            kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+            .userPresence,
+            &error
+        ) else {
+            if verbose { print("[debug] SecAccessControl failed, falling back to basic keychain") }
+            return nil
+        }
+        return access
+    }
+
+    private func authenticate(reason: String) async throws -> LAContext {
+        let context = LAContext()
+        var authError: NSError?
+        let policy: LAPolicy = .deviceOwnerAuthenticationWithBiometricsOrWatch
+        
+        guard context.canEvaluatePolicy(policy, error: &authError) else {
+            // Fallback for simulators or devices without biometrics
+            let fallbackPolicy: LAPolicy = .deviceOwnerAuthentication
+            guard context.canEvaluatePolicy(fallbackPolicy, error: &authError) else {
+                 throw EasyKeyError.authentication("Biometrics or passcode not available.")
+            }
+            do {
+                let success = try await context.evaluatePolicy(fallbackPolicy, localizedReason: reason)
+                if !success {
+                    throw EasyKeyError.authentication("Authentication failed.")
+                }
+            } catch {
+                throw EasyKeyError.authentication(error.localizedDescription)
+            }
+            return context
+        }
+        
+        do {
+            let success = try await context.evaluatePolicy(policy, localizedReason: reason)
+            if !success {
+                throw EasyKeyError.authentication("Authentication failed.")
+            }
+        } catch {
+            throw EasyKeyError.authentication(error.localizedDescription)
+        }
+        return context
+    }
+
+    func setSecret(name: String, value: Data, reason: String) async throws {
+        let context = try await authenticate(reason: reason)
+        
+        var addQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: serviceName,
+            kSecAttrAccount as String: name,
+            kSecValueData as String: value,
+            kSecUseAuthenticationContext as String: context
+        ]
+
+        let status = SecItemAdd(addQuery as CFDictionary, nil)
+        
+        if status == errSecDuplicateItem {
+            if verbose { print("[debug] Item exists; updating \(name)") }
+            let query: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: serviceName,
+                kSecAttrAccount as String: name,
+                kSecUseAuthenticationContext as String: context
+            ]
+            let updateAttrs: [String: Any] = [kSecValueData as String: value]
+            let updateStatus = SecItemUpdate(query as CFDictionary, updateAttrs as CFDictionary)
+            guard updateStatus == errSecSuccess else {
+                throw EasyKeyError.keychain("Update failed (\(updateStatus))")
+            }
+        } else if status != errSecSuccess {
+            throw EasyKeyError.keychain("Add failed (\(status))")
+        }
+
+        try updateLastAccess()
+    }
+
+    func getSecret(name: String, reason: String) async throws -> Data {
+        let context = try await authenticate(reason: reason)
+        var query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: serviceName,
+            kSecAttrAccount as String: name,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+            kSecUseAuthenticationContext as String: context
+        ]
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        guard status != errSecItemNotFound else {
+            throw EasyKeyError.notFound("Secret not found: \(name)")
+        }
+        guard status == errSecSuccess, let data = item as? Data else {
+            throw EasyKeyError.keychain("Read failed (\(status))")
+        }
+        try updateLastAccess()
+        return data
+    }
+
+    func removeSecret(name: String, reason: String) async throws {
+        let context = try await authenticate(reason: reason)
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: serviceName,
+            kSecAttrAccount as String: name,
+            kSecUseAuthenticationContext as String: context
+        ]
+        let status = SecItemDelete(query as CFDictionary)
+        
+        guard status == errSecSuccess || status == errSecItemNotFound else {
+            throw EasyKeyError.keychain("Delete failed (\(status))")
+        }
+        try updateLastAccess()
+    }
+
+    func listSecrets(reason: String) throws -> [(name: String, createdAt: Date?)] {
+        // Listing does not require authentication in this implementation for smoother UX
+        var query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: serviceName,
+            kSecReturnAttributes as String: true,
+            kSecMatchLimit as String: kSecMatchLimitAll
+        ]
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        if status == errSecItemNotFound {
+            return []
+        }
+        guard status == errSecSuccess else {
+            throw EasyKeyError.keychain("List failed (\(status))")
+        }
+        try updateLastAccess()
+        guard let array = result as? [[String: Any]] else { return [] }
+        return array.compactMap { attrs in
+            guard let account = attrs[kSecAttrAccount as String] as? String else { return nil }
+            let created = attrs[kSecAttrCreationDate as String] as? Date
+            return (name: account, createdAt: created)
+        }
+    }
+
+    func status(reason: String) throws -> (count: Int, lastAccess: Date?) {
+        let secrets = try listSecrets(reason: reason)
+        let last = try readLastAccess()
+        return (secrets.count, last)
+    }
+
+    private func updateLastAccess() throws {
+        let now = Date()
+        let data = format(date: now).data(using: .utf8) ?? Data()
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: metaServiceName,
+            kSecAttrAccount as String: lastAccessAccount
+        ]
+        let updateAttrs: [String: Any] = [kSecValueData as String: data]
+        let updateStatus = SecItemUpdate(query as CFDictionary, updateAttrs as CFDictionary)
+        if updateStatus == errSecItemNotFound {
+            let addQuery: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: metaServiceName,
+                kSecAttrAccount as String: lastAccessAccount,
+                kSecValueData as String: data,
+                kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+            ]
+            _ = SecItemAdd(addQuery as CFDictionary, nil)
+        }
+    }
+
+    private func readLastAccess() throws -> Date? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: metaServiceName,
+            kSecAttrAccount as String: lastAccessAccount,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        guard status != errSecItemNotFound else { return nil }
+        guard status == errSecSuccess, let data = item as? Data, let text = String(data: data, encoding: .utf8) else { return nil }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.date(from: text)
+    }
+    
+    private func format(date: Date) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.string(from: date)
     }
 }

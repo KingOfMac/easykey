@@ -2,7 +2,7 @@
 //  appApp.swift
 //  app
 //
-//  Created by Meir Itkin on 31/8/2025.
+//  Created by kingofmac on 31/8/2025.
 //
 
 import SwiftUI
@@ -14,11 +14,8 @@ struct EasyKeyApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .frame(minWidth: 400, minHeight: 600)
         }
-        .windowStyle(.hiddenTitleBar)
-        .windowToolbarStyle(.unified)
-        .commandsRemoved()
+        .windowResizability(.contentSize)
     }
 }
 

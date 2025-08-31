@@ -518,7 +518,7 @@ private func parseCLI() throws -> (Command, CLIOptions) {
         throw CLIError.invalidArguments("Missing command. Use --help for usage.")
     }
 
-    switch cmd {
+    switch cmd.lowercased() {
     case "get":
         guard args.count >= 2 else { throw CLIError.invalidArguments("Usage: easykey get <SECRET_NAME> [--reason \"text\"] [--quiet]") }
         let name = args[1]
