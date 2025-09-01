@@ -2,7 +2,7 @@
 
 *A secure replacement for environment variables on macOS*
 
-**EasyKey** is a comprehensive macOS solution that includes a beautiful native app, command-line tool, and Python package for storing your secrets securely in the system keychain with biometric authentication. Say goodbye to `.env` files, hardcoded credentials, and insecure environment variables.
+**EasyKey** is a comprehensive macOS solution that includes a beautiful native app, command-line tool, Python package, and Node.js package for storing your secrets securely in the system keychain with biometric authentication. Say goodbye to `.env` files, hardcoded credentials, and insecure environment variables.
 
 > *This projects codebase was mainly written by Cursor and is intended for personal use. Please evaluate carefully before using it.*
 
@@ -26,7 +26,7 @@
 
 ## Installation
 
-### 🎯 Quick Install (Recommended)
+### 🎯 Complete Install (Recommended)
 
 Install everything (GUI app, CLI tool, and Python package) with one command:
 
@@ -36,7 +36,35 @@ cd easykey
 ./install.sh
 ```
 
-This will build and install the EasyKey app to your Applications folder.
+This will build and install all EasyKey components: the macOS app, CLI tool, Python package, and Node.js package.
+
+### 📦 Individual Component Installation
+
+You can also install components individually:
+
+#### 📱 macOS App Only
+```bash
+./app.sh
+```
+Installs only the GUI application to `/Applications/EasyKey.app`.
+
+#### 🖥️ CLI Tool Only  
+```bash
+./cli.sh
+```
+Installs only the command-line tool to `/usr/local/bin/easykey`.
+
+#### 🐍 Python Package Only
+```bash
+pip install easykey
+```
+Installs only the Python package (requires CLI tool to be installed separately for functionality).
+
+#### 📦 Node.js Package Only
+```bash
+npm install easykey
+```
+Installs only the Node.js package (requires CLI tool to be installed separately for functionality).
 
 ### 📱 macOS App
 
@@ -52,10 +80,12 @@ The beautiful native EasyKey app provides a modern interface for managing your s
 ```bash
 git clone https://github.com/kingofmac/easykey.git
 cd easykey
-./install.sh
+./app.sh
 ```
 
 The app will be installed to `/Applications/EasyKey.app` and can be launched from Spotlight or the Applications folder.
+
+For complete installation (app + CLI + Python + Node.js), use `./install.sh` instead.
 
 #### Uninstall
 ```bash
@@ -66,26 +96,64 @@ The app will be installed to `/Applications/EasyKey.app` and can be launched fro
 
 ### 🖥️ CLI Tool
 
-#### Build from Source
+#### Install CLI Only
+```bash
+git clone https://github.com/kingofmac/easykey.git
+cd easykey
+./cli.sh
+```
+
+#### Build from Source (Manual)
 ```bash
 git clone https://github.com/kingofmac/easykey.git
 cd easykey/cli
 swift build -c release
-cp .build/release/easykey /usr/local/bin/
+sudo cp .build/release/easykey /usr/local/bin/
 ```
 
-#### Via Quick Install
+#### Via Complete Install
 The CLI tool is automatically included when using `./install.sh`.
 
 *Homebrew installation coming soon*
 
 ### 🐍 Python Package
 
+#### From PyPI (Recommended)
 ```bash
 pip install easykey
 ```
 
+#### From Source
+```bash
+git clone https://github.com/kingofmac/easykey.git
+cd easykey/python
+pip install . --user
+```
+
+#### Via Complete Install
+The Python package is automatically included when using `./install.sh`.
+
 *Note: The Python package requires the CLI tool to be installed first.*
+
+### 📦 Node.js Package
+
+#### From npm (Recommended)
+```bash
+npm install easykey
+```
+
+#### From Source
+```bash
+git clone https://github.com/kingofmac/easykey.git
+cd easykey/nodejs
+npm install
+npm link
+```
+
+#### Via Complete Install
+The Node.js package is automatically included when using `./install.sh`.
+
+*Note: The Node.js package requires the CLI tool to be installed first.*
 
 ## Quick Start
 
@@ -114,6 +182,14 @@ import easykey
 
 # Get your database URL securely
 db_url = easykey.secret("DATABASE_URL")
+```
+
+### 📦 Using Node.js
+```javascript
+const easykey = require('easykey');
+
+// Get your database URL securely
+const dbUrl = easykey.secret("DATABASE_URL");
 ```
 
 ## CLI Documentation
@@ -247,6 +323,92 @@ except easykey.EasyKeyError as e:
     print(f"Failed to get secret: {e}")
 ```
 
+## Node.js Package Documentation
+
+### Installation
+```bash
+npm install easykey
+```
+
+### Basic Usage
+
+```javascript
+const easykey = require('easykey');
+
+// Retrieve secrets
+const apiKey = easykey.secret("API_KEY");
+const dbUrl = easykey.secret("DATABASE_URL", "Connecting to production");
+
+// List all secrets
+const secrets = easykey.list();
+for (const secret of secrets) {
+    console.log(`Secret: ${secret.name}`);
+}
+
+// Get vault status
+const status = easykey.status();
+console.log(`Total secrets: ${status.secrets}`);
+```
+
+### ES6 Import Syntax
+
+```javascript
+import { secret, list, status } from 'easykey';
+
+const apiKey = secret("API_KEY");
+const secrets = list();
+const vaultStatus = status();
+```
+
+### TypeScript Support
+
+```typescript
+import { secret, list, status, SecretInfo, VaultStatus, EasyKeyError } from 'easykey';
+
+try {
+    const secretValue: string = secret('API_KEY', 'Production access');
+    console.log(secretValue);
+} catch (error) {
+    if (error instanceof EasyKeyError) {
+        console.error('EasyKey operation failed:', error.message);
+    }
+}
+```
+
+### API Reference
+
+#### `secret(name, reason?)`
+Retrieve a secret value.
+- **name** (string): Secret identifier
+- **reason** (string, optional): Reason for access (audit logging)
+- **Returns**: Secret value as string
+- **Throws**: `EasyKeyError` if secret not found or access denied
+
+#### `list(includeTimestamps?)`
+List all secrets.
+- **includeTimestamps** (boolean): Include creation timestamps
+- **Returns**: Array of objects with secret information
+- **Throws**: `EasyKeyError` if listing fails
+
+#### `status()`
+Get vault status.
+- **Returns**: Object with vault information (secret count, last access)
+- **Throws**: `EasyKeyError` if status check fails
+
+### Exception Handling
+
+```javascript
+const easykey = require('easykey');
+
+try {
+    const secret = easykey.secret("NON_EXISTENT_KEY");
+} catch (error) {
+    if (error instanceof easykey.EasyKeyError) {
+        console.error(`Failed to get secret: ${error.message}`);
+    }
+}
+```
+
 ## Security Features
 
 - **🔐 Keychain Integration**: Uses macOS keychain for encrypted storage
@@ -282,6 +444,10 @@ easykey set JWT_SECRET "super-secret-key"
 import easykey
 database_url = easykey.secret("DATABASE_URL")
 
+# Use in Node.js
+const easykey = require('easykey');
+const databaseUrl = easykey.secret("DATABASE_URL");
+
 # Or in shell scripts
 export DATABASE_URL=$(easykey get DATABASE_URL --quiet)
 ```
@@ -302,7 +468,10 @@ easykey/
 ├── app/                 # macOS SwiftUI application
 ├── cli/                 # Swift command-line tool
 ├── python/              # Python package
-├── install.sh           # One-command installer
+├── nodejs/              # Node.js package
+├── install.sh           # Complete installer (all components)
+├── app.sh               # macOS app installer only
+├── cli.sh               # CLI tool installer only
 ├── uninstall.sh         # Clean uninstaller
 └── README.md           # This documentation
 ```
@@ -312,4 +481,5 @@ easykey/
 - **Platform**: macOS 10.12+ (Sierra and later)
 - **Architecture**: Apple Silicon 
 - **Python**: 3.7+ (for Python package)
+- **Node.js**: 12.0+ (for Node.js package)
 - **Swift**: 5.5+ (for building from source)

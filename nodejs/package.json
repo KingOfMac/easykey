@@ -1,0 +1,52 @@
+{
+  "name": "easykey",
+  "version": "0.1.0",
+  "description": "Node.js wrapper for the easykey CLI - secure keychain access",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "test": "node test.js",
+    "example": "node example.js"
+  },
+  "keywords": [
+    "keychain",
+    "security",
+    "secrets",
+    "macOS",
+    "CLI",
+    "wrapper",
+    "vault"
+  ],
+  "author": "KingOfMac",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kingofmac/easykey.git",
+    "directory": "nodejs"
+  },
+  "bugs": {
+    "url": "https://github.com/kingofmac/easykey/issues"
+  },
+  "homepage": "https://github.com/kingofmac/easykey#readme",
+  "os": [
+    "darwin"
+  ],
+  "engines": {
+    "node": ">=12.0.0"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "README.md",
+    "example.js"
+  ],
+  "devDependencies": {},
+  "peerDependencies": {},
+  "publishConfig": {
+    "access": "public"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/kingofmac/easykey"
+  }
+}
