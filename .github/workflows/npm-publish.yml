@@ -130,6 +130,8 @@ jobs:
       with:
         node-version: '20'
         registry-url: 'https://registry.npmjs.org'
+        cache: 'npm'
+        cache-dependency-path: nodejs/package-lock.json
     
     - name: Install dependencies
       working-directory: ./nodejs
