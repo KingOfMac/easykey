@@ -1,152 +1,64 @@
-name: Publish npm Package
+name: Publish npm package (easykey)
 
 on:
   push:
-    branches: [ main ]
-    paths:
-      - 'nodejs/**'
-      - '.github/workflows/npm-publish.yml'
-  pull_request:
-    branches: [ main ]
-    paths:
-      - 'nodejs/**'
-  release:
-    types: [published]
+    tags:
+      - "nodejs-v*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Tag to build from (defaults to current commit)"
+        required: false
+
+permissions:
+  contents: read
 
 jobs:
-  test:
-    runs-on: macos-latest
-    strategy:
-      matrix:
-        node-version: [16, 18, 20]
-    
+  build-and-publish:
+    name: Build and publish to npm
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: nodejs
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-    
-    - name: Setup Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-        cache-dependency-path: nodejs/package-lock.json
-    
-    - name: Install dependencies
-      working-directory: ./nodejs
-      run: npm ci || npm install
-    
-    - name: Run tests
-      working-directory: ./nodejs
-      run: npm test
-      continue-on-error: true
-    
-    - name: Validate package structure
-      working-directory: ./nodejs
-      run: |
-        # Check required files exist
-        test -f package.json
-        test -f index.js
-        test -f index.d.ts
-        test -f README.md
-        test -f example.js
-        
-        # Validate package.json
-        node -e "const pkg = require('./package.json'); console.log('Package name:', pkg.name); console.log('Version:', pkg.version);"
-        
-        # Check TypeScript definitions
-        if command -v tsc &> /dev/null; then
-          npx -p typescript tsc --noEmit index.d.ts
-        fi
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  publish:
-    needs: test
-    runs-on: macos-latest
-    if: github.event_name == 'release' && github.event.action == 'published'
-    
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-        registry-url: 'https://registry.npmjs.org'
-        cache: 'npm'
-        cache-dependency-path: nodejs/package-lock.json
-    
-    - name: Install dependencies
-      working-directory: ./nodejs
-      run: npm ci || npm install
-    
-    - name: Update package version from release tag
-      working-directory: ./nodejs
-      run: |
-        # Extract version from GitHub release tag (remove 'v' prefix if present)
-        VERSION=$(echo ${{ github.event.release.tag_name }} | sed 's/^v//')
-        echo "Setting package version to: $VERSION"
-        npm version $VERSION --no-git-tag-version
-    
-    - name: Build package
-      working-directory: ./nodejs
-      run: |
-        # Validate the package before publishing
-        npm pack --dry-run
-        
-        # List files that will be included in the package
-        npm pack --dry-run --json | jq -r '.files[].path' | sort
-    
-    - name: Publish to npm
-      working-directory: ./nodejs
-      run: npm publish --access public
-      env:
-        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-    
-    - name: Create GitHub release note
-      working-directory: ./nodejs
-      run: |
-        echo "## 📦 npm Package Published" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Package:** \`easykey\`" >> $GITHUB_STEP_SUMMARY
-        echo "**Version:** \`$(node -p "require('./package.json').version")\`" >> $GITHUB_STEP_SUMMARY
-        echo "**Registry:** [npmjs.com](https://www.npmjs.com/package/easykey)" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### Installation" >> $GITHUB_STEP_SUMMARY
-        echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-        echo "npm install easykey" >> $GITHUB_STEP_SUMMARY
-        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+          cache-dependency-path: nodejs/package-lock.json
 
-  publish-dry-run:
-    needs: test
-    runs-on: macos-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-        registry-url: 'https://registry.npmjs.org'
-        cache: 'npm'
-        cache-dependency-path: nodejs/package-lock.json
-    
-    - name: Install dependencies
-      working-directory: ./nodejs
-      run: npm ci || npm install
-    
-    - name: Dry run publish
-      working-directory: ./nodejs
-      run: |
-        echo "🔍 Performing dry run publish..."
-        npm pack --dry-run
-        
-        echo ""
-        echo "📦 Package contents:"
-        npm pack --dry-run --json | jq -r '.files[].path' | sort
-        
-        echo ""
-        echo "✅ Package is ready for publishing!"
-        echo "To publish, create a new release with a version tag (e.g., v0.1.0)"
+      - name: Install dependencies
+        run: |
+          npm ci
+
+      - name: Run tests
+        run: |
+          npm test
+
+      - name: Validate package structure
+        run: |
+          # Check required files exist
+          test -f package.json
+          test -f index.js
+          test -f index.d.ts
+          test -f README.md
+          test -f example.js
+          
+          # Validate package.json
+          node -e "const pkg = require('./package.json'); console.log('Package name:', pkg.name); console.log('Version:', pkg.version);"
+
+      - name: Package check
+        run: |
+          npm pack --dry-run
+
+      - name: Publish to npm
+        if: startsWith(github.ref, 'refs/tags/nodejs-v') || github.event_name == 'workflow_dispatch'
+        run: |
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
