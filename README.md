@@ -2,7 +2,7 @@
 
 *A secure replacement for environment variables on macOS*
 
-**EasyKey** is a macOS command-line tool and Python package that stores your secrets securely in the system keychain with biometric authentication. Say goodbye to `.env` files, hardcoded credentials, and insecure environment variables.
+**EasyKey** is a comprehensive macOS solution that includes a beautiful native app, command-line tool, and Python package for storing your secrets securely in the system keychain with biometric authentication. Say goodbye to `.env` files, hardcoded credentials, and insecure environment variables.
 
 > *This projects codebase was mainly written by Cursor and is intended for personal use. Please evaluate carefully before using it.*
 
@@ -17,7 +17,8 @@
 
 **EasyKey advantages:**
 - ✅ Encrypted storage in macOS keychain
-- ✅ Biometric authentication (Touch ID)
+- ✅ Biometric authentication (Touch ID/Face ID)
+- ✅ Beautiful native macOS app
 - ✅ Never stored in plain text
 - ✅ Audit trail with access reasons
 - ✅ Device-local security
@@ -25,19 +26,60 @@
 
 ## Installation
 
-### CLI Tool
+### 🎯 Quick Install (Recommended)
+
+Install everything (GUI app, CLI tool, and Python package) with one command:
+
+```bash
+git clone https://github.com/kingofmac/easykey.git
+cd easykey
+./install.sh
+```
+
+This will build and install the EasyKey app to your Applications folder.
+
+### 📱 macOS App
+
+The beautiful native EasyKey app provides a modern interface for managing your secrets with:
+
+- **Modern UI**: Clean, intuitive design with smooth animations
+- **Touch ID/Face ID**: Secure biometric authentication
+- **Search & Filter**: Quickly find your secrets
+- **Easy Management**: Add, view, copy, and delete secrets
+- **Status Dashboard**: Overview of your vault
+
+#### Install from Source
+```bash
+git clone https://github.com/kingofmac/easykey.git
+cd easykey
+./install.sh
+```
+
+The app will be installed to `/Applications/EasyKey.app` and can be launched from Spotlight or the Applications folder.
+
+#### Uninstall
+```bash
+./uninstall.sh
+```
+
+*Note: Uninstalling the app does not remove your secrets from the keychain - they remain secure and accessible via the CLI.*
+
+### 🖥️ CLI Tool
 
 #### Build from Source
 ```bash
 git clone https://github.com/kingofmac/easykey.git
-cd cli
+cd easykey/cli
 swift build -c release
 cp .build/release/easykey /usr/local/bin/
 ```
 
-Brew installation coming soon
+#### Via Quick Install
+The CLI tool is automatically included when using `./install.sh`.
 
-### Python Package
+*Homebrew installation coming soon*
+
+### 🐍 Python Package
 
 ```bash
 pip install easykey
@@ -47,17 +89,26 @@ pip install easykey
 
 ## Quick Start
 
-### Store a Secret
+### 📱 Using the macOS App
+
+1. Launch **EasyKey** from Applications or Spotlight
+2. Authenticate with Touch ID/Face ID
+3. Click **"+ Add"** to store your first secret
+4. Search, view, and manage secrets with the intuitive interface
+
+### 🖥️ Using the CLI
+
+#### Store a Secret
 ```bash
 easykey set DATABASE_URL "postgresql://user:pass@localhost/db"
 ```
 
-### Retrieve a Secret
+#### Retrieve a Secret
 ```bash
 easykey get DATABASE_URL
 ```
 
-### Use in Python
+### 🐍 Using Python
 ```python
 import easykey
 
@@ -233,6 +284,27 @@ database_url = easykey.secret("DATABASE_URL")
 
 # Or in shell scripts
 export DATABASE_URL=$(easykey get DATABASE_URL --quiet)
+```
+
+## Development
+
+### Building from Source
+
+The project includes a comprehensive `.gitignore` that excludes:
+- Xcode build artifacts and user data
+- Python build directories and package metadata  
+- macOS system files and IDE configurations
+- Environment variables and sensitive files
+
+### Project Structure
+```
+easykey/
+├── app/                 # macOS SwiftUI application
+├── cli/                 # Swift command-line tool
+├── python/              # Python package
+├── install.sh           # One-command installer
+├── uninstall.sh         # Clean uninstaller
+└── README.md           # This documentation
 ```
 
 ## Compatibility

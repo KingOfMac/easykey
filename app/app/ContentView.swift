@@ -16,28 +16,55 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
+            // Main content
             VStack(spacing: 0) {
                 StatusView(service: easyKeyService)
                 SecretsView(service: easyKeyService)
             }
-            .frame(minWidth: 400, idealWidth: 450, maxWidth: 600, minHeight: 400, idealHeight: 600, maxHeight: 800)
+            .frame(minWidth: 500, idealWidth: 550, maxWidth: 700, minHeight: 500, idealHeight: 700, maxHeight: 900)
+            .background(.regularMaterial)
             .toolbar {
-                ToolbarItemGroup {
-                    Button(action: { showingAddSecret = true }) {
-                        Label("Add Secret", systemImage: "plus")
-                    }
-                    
-                    Button(action: {
-                        Task {
-                            await easyKeyService.refresh()
+                ToolbarItemGroup(placement: .primaryAction) {
+                    HStack(spacing: 8) {
+                        Button(action: { showingAddSecret = true }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "plus")
+                                    .font(.system(size: 13, weight: .semibold))
+                                Text("Add")
+                                    .font(.system(size: 13, weight: .semibold))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background {
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(LinearGradient(colors: [.green.opacity(0.8), .blue.opacity(0.6)], startPoint: .leading, endPoint: .trailing))
+                            }
                         }
-                    }) {
-                        Label("Refresh", systemImage: "arrow.clockwise")
-                    }
-                    .disabled(easyKeyService.isLoading)
-                    
-                    Button(action: { showingSettings = true }) {
-                        Label("Settings", systemImage: "gear")
+                        .buttonStyle(.plain)
+                        
+                        Button(action: {
+                            Task {
+                                await easyKeyService.refresh()
+                            }
+                        }) {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.secondary)
+                                .padding(8)
+                                .background(.quaternary, in: Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(easyKeyService.isLoading)
+                        
+                        Button(action: { showingSettings = true }) {
+                            Image(systemName: "gear")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.secondary)
+                                .padding(8)
+                                .background(.quaternary, in: Circle())
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -55,18 +82,71 @@ struct ContentView: View {
                 Text(easyKeyService.error?.errorDescription ?? "")
             }
 
+            // Authentication overlay
             if !isUnlocked {
-                VStack {
-                    Text("EasyKey Locked")
-                        .font(.largeTitle)
-                        .padding()
-                    Button(action: authenticate) {
-                        Label("Unlock with Biometrics", systemImage: "lock.fill")
+                ZStack {
+                    // Blurred background
+                    Rectangle()
+                        .fill(.regularMaterial)
+                        .ignoresSafeArea()
+                    
+                    // Lock screen content
+                    VStack(spacing: 32) {
+                        VStack(spacing: 20) {
+                            // App icon/logo area
+                            ZStack {
+                                Circle()
+                                    .fill(LinearGradient(colors: [.blue.opacity(0.8), .purple.opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                    .frame(width: 100, height: 100)
+                                    .shadow(color: .blue.opacity(0.3), radius: 20, x: 0, y: 8)
+                                
+                                Image(systemName: "key.horizontal.fill")
+                                    .font(.system(size: 40, weight: .semibold))
+                                    .foregroundColor(.white)
+                            }
+                            
+                            VStack(spacing: 8) {
+                                Text("EasyKey")
+                                    .font(.system(size: 32, weight: .bold))
+                                    .foregroundColor(.primary)
+                                
+                                Text("Your secrets are protected")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        // Unlock button
+                        Button(action: authenticate) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "faceid")
+                                    .font(.system(size: 18, weight: .semibold))
+                                
+                                Text("Unlock with Biometrics")
+                                    .font(.system(size: 16, weight: .semibold))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 14)
+                            .background {
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .fill(LinearGradient(colors: [.blue.opacity(0.9), .purple.opacity(0.7)], startPoint: .leading, endPoint: .trailing))
+                                    .shadow(color: .blue.opacity(0.3), radius: 12, x: 0, y: 4)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .scaleEffect(1.0)
+                        .onHover { hovering in
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                // Add hover effect if needed
+                            }
+                        }
                     }
-                    .padding()
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(.regularMaterial)
+                .transition(.asymmetric(
+                    insertion: .opacity.combined(with: .scale(scale: 0.95)),
+                    removal: .opacity.combined(with: .scale(scale: 1.05))
+                ))
             }
         }
         .onAppear(perform: authenticate)
