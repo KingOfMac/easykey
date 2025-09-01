@@ -1,5 +1,5 @@
 {
-  "name": "easykey",
+  "name": "@kingofmac/easykey",
   "version": "0.1.0",
   "description": "Node.js wrapper for the easykey CLI - secure keychain access",
   "main": "index.js",
@@ -21,7 +21,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/kingofmac/easykey.git",
+    "url": "git+https://github.com/kingofmac/easykey.git",
     "directory": "nodejs"
   },
   "bugs": {

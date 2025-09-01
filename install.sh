@@ -53,7 +53,7 @@ install_nodejs_package() {
     cd nodejs
     
     if command -v npm &> /dev/null; then
-        npm install -g easykey
+        npm install -g @kingofmac/easykey
     else
         echo -e "${RED}❌ Error: npm not found. Please install Node.js and npm first.${NC}"
         cd ..

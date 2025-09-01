@@ -62,7 +62,7 @@ Installs only the Python package (requires CLI tool to be installed separately f
 
 #### 📦 Node.js Package Only
 ```bash
-npm install easykey
+npm install @kingofmac/easykey
 ```
 Installs only the Node.js package (requires CLI tool to be installed separately for functionality).
 
@@ -139,7 +139,7 @@ The Python package is automatically included when using `./install.sh`.
 
 #### From npm (Recommended)
 ```bash
-npm install easykey
+npm install @kingofmac/easykey
 ```
 
 #### From Source
@@ -186,7 +186,7 @@ db_url = easykey.secret("DATABASE_URL")
 
 ### 📦 Using Node.js
 ```javascript
-const easykey = require('easykey');
+const easykey = require('@kingofmac/easykey');
 
 // Get your database URL securely
 const dbUrl = easykey.secret("DATABASE_URL");
@@ -327,13 +327,13 @@ except easykey.EasyKeyError as e:
 
 ### Installation
 ```bash
-npm install easykey
+npm install @kingofmac/easykey
 ```
 
 ### Basic Usage
 
 ```javascript
-const easykey = require('easykey');
+const easykey = require('@kingofmac/easykey');
 
 // Retrieve secrets
 const apiKey = easykey.secret("API_KEY");
@@ -353,7 +353,7 @@ console.log(`Total secrets: ${status.secrets}`);
 ### ES6 Import Syntax
 
 ```javascript
-import { secret, list, status } from 'easykey';
+import { secret, list, status } from '@kingofmac/easykey';
 
 const apiKey = secret("API_KEY");
 const secrets = list();
@@ -363,7 +363,7 @@ const vaultStatus = status();
 ### TypeScript Support
 
 ```typescript
-import { secret, list, status, SecretInfo, VaultStatus, EasyKeyError } from 'easykey';
+import { secret, list, status, SecretInfo, VaultStatus, EasyKeyError } from '@kingofmac/easykey';
 
 try {
     const secretValue: string = secret('API_KEY', 'Production access');
@@ -398,7 +398,7 @@ Get vault status.
 ### Exception Handling
 
 ```javascript
-const easykey = require('easykey');
+const easykey = require('@kingofmac/easykey');
 
 try {
     const secret = easykey.secret("NON_EXISTENT_KEY");
@@ -445,7 +445,7 @@ import easykey
 database_url = easykey.secret("DATABASE_URL")
 
 # Use in Node.js
-const easykey = require('easykey');
+const easykey = require('@kingofmac/easykey');
 const databaseUrl = easykey.secret("DATABASE_URL");
 
 # Or in shell scripts
