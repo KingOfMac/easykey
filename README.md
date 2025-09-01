@@ -22,7 +22,7 @@
 - ✅ Never stored in plain text
 - ✅ Audit trail with access reasons
 - ✅ Device-local security
-- ✅ Simple CLI and Python API
+- ✅ Simple CLI, App and Multilanguage API
 
 ## Installation
 
