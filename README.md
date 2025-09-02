@@ -51,7 +51,15 @@ brew tap kingofmac/easykey
 brew install easykey --build-from-source
 ```
 
-This will compile both the CLI tool and macOS app from source on your machine (no code signing required). The CLI tool will be available in your PATH, and the app will be installed to `~/Applications/EasyKey.app`.
+This will compile both the CLI tool and macOS app from source on your machine (no code signing required). The CLI tool will be available in your PATH.
+
+**Complete the app installation:**
+If the app installation doesn't complete automatically, run this command:
+```bash
+cp -r /opt/homebrew/Cellar/easykey/0.1.0/EasyKey.app ~/Applications/
+```
+
+The app will then be available in `~/Applications/EasyKey.app` and can be launched from Spotlight or the Applications folder.
 
 ### 📦 Individual Component Installation
 
