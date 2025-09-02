@@ -437,6 +437,7 @@ enum Command {
     case list(json: Bool)
     case status
     case cleanup
+    case uninstall
     case help
     case version
 }
@@ -474,6 +475,9 @@ private func printUsage() {
 
       cleanup
         Remove all easykey secrets from keychain (nuclear option for fixing access issues).
+
+      uninstall
+        Remove the EasyKey app from /Applications. Secrets remain in keychain.
     """
     print(usage)
 }
@@ -538,6 +542,8 @@ private func parseCLI() throws -> (Command, CLIOptions) {
         return (.status, options)
     case "cleanup":
         return (.cleanup, options)
+    case "uninstall":
+        return (.uninstall, options)
     case "--help", "help":
         return (.help, options)
     default:
