@@ -44,7 +44,7 @@ Install just the CLI tool via Homebrew:
 
 ```bash
 brew tap kingofmac/easykey
-brew install easykey
+brew install easykey --build-from-source
 ```
 
 This will compile the CLI tool from source on your machine (no code signing required).
@@ -125,7 +125,7 @@ sudo cp .build/release/easykey /usr/local/bin/
 #### Via Homebrew (Recommended)
 ```bash
 brew tap kingofmac/easykey
-brew install easykey
+brew install easykey --build-from-source
 ```
 
 #### Via Complete Install
