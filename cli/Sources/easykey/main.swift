@@ -624,6 +624,30 @@ do {
         } else {
             print("Cleanup cancelled.")
         }
+    case .uninstall:
+        if options.verbose { eprint("[debug] uninstall") }
+        let appPath = "/Applications/EasyKey.app"
+        
+        if !FileManager.default.fileExists(atPath: appPath) {
+            print("⚠️  EasyKey is not installed in /Applications")
+            exit(0)
+        }
+        
+        print("🗑️  Removing EasyKey from Applications...")
+        
+        do {
+            try FileManager.default.removeItem(atPath: appPath)
+            print("✅ EasyKey successfully removed from /Applications")
+            print("")
+            print("💡 Note: Your secrets remain safely stored in the macOS keychain.")
+            print("   Use the CLI tool or reinstall the app to access them again.")
+            print("")
+            print("🎉 Uninstallation complete!")
+        } catch {
+            throw CLIError.keychain("Failed to remove EasyKey app: \(error.localizedDescription)")
+        }
+        
+        if options.verbose { eprint("[debug] uninstall: success") }
     }
 } catch let err as CLIError {
     eprint("error: \(err.description)")
