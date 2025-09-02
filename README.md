@@ -38,9 +38,9 @@ cd easykey
 
 This will build and install all EasyKey components: the macOS app, CLI tool, Python package, and Node.js package.
 
-### 🍺 Homebrew Installation (CLI Only)
+### 🍺 Homebrew Installation (CLI + App)
 
-Install just the CLI tool via Homebrew:
+Install both the CLI tool and macOS app via Homebrew:
 
 **Requirements:**
 - macOS 10.15+ (Catalina or later)
@@ -51,7 +51,7 @@ brew tap kingofmac/easykey
 brew install easykey --build-from-source
 ```
 
-This will compile the CLI tool from source on your machine (no code signing required).
+This will compile both the CLI tool and macOS app from source on your machine (no code signing required). The CLI tool will be available in your PATH, and the app will be installed to `~/Applications/EasyKey.app`.
 
 ### 📦 Individual Component Installation
 
@@ -126,11 +126,12 @@ swift build -c release
 sudo cp .build/release/easykey /usr/local/bin/
 ```
 
-#### Via Homebrew (Recommended)
+#### Via Homebrew (CLI + App)
 ```bash
 brew tap kingofmac/easykey
 brew install easykey --build-from-source
 ```
+*Note: This installs both the CLI tool and macOS app.*
 
 #### Via Complete Install
 The CLI tool is automatically included when using `./install.sh`.
