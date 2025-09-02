@@ -10,7 +10,7 @@ A simple Node.js wrapper for the [easykey](https://github.com/kingofmac/easykey)
 2. Install this Node.js package:
 
 ```bash
-npm install easykey
+npm install @kingofmac/easykey
 ```
 
 ### Local Development Installation
@@ -28,7 +28,7 @@ npm link
 ### Basic Secret Retrieval
 
 ```javascript
-const easykey = require('easykey');
+const easykey = require('@kingofmac/easykey');
 
 // Get a secret (this will trigger biometric authentication)
 const secret = easykey.secret('MySecretName');
@@ -41,7 +41,7 @@ const secret = easykey.secret('MySecretName', 'Connecting to production database
 ### ES6 Import Syntax
 
 ```javascript
-import { secret, list, status } from 'easykey';
+import { secret, list, status } from '@kingofmac/easykey';
 
 // Get a secret
 const mySecret = secret('MySecretName');
@@ -50,7 +50,7 @@ const mySecret = secret('MySecretName');
 ### TypeScript Support
 
 ```typescript
-import { secret, list, status, SecretInfo, VaultStatus, EasyKeyError } from 'easykey';
+import { secret, list, status, SecretInfo, VaultStatus, EasyKeyError } from '@kingofmac/easykey';
 
 // Get a secret with full type safety
 try {
@@ -66,7 +66,7 @@ try {
 ### Listing and Status
 
 ```javascript
-const easykey = require('easykey');
+const easykey = require('@kingofmac/easykey');
 
 // List all secret names
 const secrets = easykey.list();
@@ -145,7 +145,7 @@ interface VaultStatus {
 ## Quick Start Example
 
 ```javascript
-const easykey = require('easykey');
+const easykey = require('@kingofmac/easykey');
 
 async function example() {
     try {
