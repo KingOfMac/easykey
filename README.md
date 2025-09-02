@@ -42,6 +42,10 @@ This will build and install all EasyKey components: the macOS app, CLI tool, Pyt
 
 Install just the CLI tool via Homebrew:
 
+**Requirements:**
+- macOS 10.15+ (Catalina or later)
+- Xcode Command Line Tools: `xcode-select --install`
+
 ```bash
 brew tap kingofmac/easykey
 brew install easykey --build-from-source
