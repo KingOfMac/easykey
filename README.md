@@ -38,6 +38,17 @@ cd easykey
 
 This will build and install all EasyKey components: the macOS app, CLI tool, Python package, and Node.js package.
 
+### 🍺 Homebrew Installation (CLI Only)
+
+Install just the CLI tool via Homebrew:
+
+```bash
+brew tap kingofmac/easykey
+brew install easykey
+```
+
+This will compile the CLI tool from source on your machine (no code signing required).
+
 ### 📦 Individual Component Installation
 
 You can also install components individually:
@@ -89,7 +100,7 @@ For complete installation (app + CLI + Python + Node.js), use `./install.sh` ins
 
 #### Uninstall
 ```bash
-./uninstall.sh
+easykey uninstall
 ```
 
 *Note: Uninstalling the app does not remove your secrets from the keychain - they remain secure and accessible via the CLI.*
@@ -111,10 +122,14 @@ swift build -c release
 sudo cp .build/release/easykey /usr/local/bin/
 ```
 
+#### Via Homebrew (Recommended)
+```bash
+brew tap kingofmac/easykey
+brew install easykey
+```
+
 #### Via Complete Install
 The CLI tool is automatically included when using `./install.sh`.
-
-*Homebrew installation coming soon*
 
 ### 🐍 Python Package
 
@@ -234,6 +249,12 @@ easykey remove OLD_API_KEY
 Remove all EasyKey secrets (nuclear option).
 ```bash
 easykey cleanup
+```
+
+#### `easykey uninstall`
+Remove the EasyKey app from /Applications.
+```bash
+easykey uninstall
 ```
 
 ### Global Flags
